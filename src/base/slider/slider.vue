@@ -5,6 +5,7 @@
       </slot>
     </div>
     <div class="dots">
+      <span class="dot" v-for="(item,index) in dots" :key="index" :class="{active: currentIndex === index}"></span>
     </div>
   </div>
 </template>
@@ -14,7 +15,17 @@
   import { addClass } from 'common/js/dom'
 
   export default {
+    data() {
+      return {
+        dots: [],
+        currentIndex: 0
+      }
+    },
     props: {
+      showDots: {
+        type: Boolean,
+        default: true
+      },
       loop: {
         type: Boolean,
         default: true
@@ -28,16 +39,34 @@
         default: 4000
       }
     },
-    mounted () {
+    mounted() {
       setTimeout(() => {
-        this._setSliderWidth()
-        this._initSlider()
+        this.init()
+        window.addEventListener('resize', () => {
+          this._setSliderWidth(true)
+        })
       }, 20)
     },
+    destroyed() {
+      clearTimeout(this.timer)
+    },
     methods: {
-      _setSliderWidth () {
+      init() {
+        if (this.timer) {
+          clearTimeout(this.timer)
+        }
+        this._setSliderWidth()
+        if (this.showDots) {
+          this._initDots()
+        }
+        this._initSlider()
+        if (this.autoPlay) {
+          this._play()
+        }
+      },
+      _setSliderWidth(resize) {
         let width = 0
-        let sliderWidth = this.$refs.slider.width
+        let sliderWidth = this.$refs.slider.clientWidth
         this.children = this.$refs.sliderGroup.children
         for (let i = 0; i < this.children.length; i++) {
           let child = this.children[i]
@@ -45,13 +74,16 @@
           child.style.width = sliderWidth + 'px'
           width += sliderWidth
         }
-        if (this.loop) {
+        if (this.loop && !resize) {
           width += 2 * sliderWidth
         }
         this.$refs.sliderGroup.style.width = width + 'px'
       },
-      _initSlider () {
-        this.scroll = new BScroll(this.$refs.sliderGroup, {
+      _initDots() {
+        this.dots = new Array(this.children.length)
+      },
+      _initSlider() {
+        this.slider = new BScroll(this.$refs.slider, {
           scrollX: true,
           scrollY: false,
           momentum: false,
@@ -63,12 +95,25 @@
           bounce: false,
           click: true
         })
+        this.slider.on('scrollEnd', () => {
+          let pageIndex = this.slider.currentPage.pageX
+          this.currentIndex = pageIndex - 1
+          if (this.autoPlay) {
+            this._play()
+          }
+        })
+      },
+      _play() {
+        clearTimeout(this.timer)
+        this.timer = setTimeout(() => {
+          this.slider.next()
+        }, this.interval)
       }
     }
   }
 </script>
 <style scoped lang="stylus" rel="stylesheet/stylus">
-  @import "~common/stylus/variable"
+  @import "~common/stylus/variable.styl"
   .slider
     min-height: 1px
     .slider-group
@@ -88,4 +133,23 @@
         img
           display: block
           width: 100%
+    .dots
+      position: absolute
+      right: 0
+      left: 0
+      bottom: 12px
+      transform: translateZ(1px)
+      text-align: center
+      font-size: 0
+      .dot
+        display: inline-block
+        margin: 0 4px
+        width: 8px
+        height: 8px
+        border-radius: 50%
+        background-color: $color-text-l
+        &.active
+          width: 20px
+          border-radius: 5px
+          background: $color-text-ll
 </style>
