@@ -1,8 +1,11 @@
 <template>
-  <div class="singers"></div>
+  <div class="singers">
+    <listview :data="singers"></listview>
+  </div>
 </template>
 
 <script type="text/ecmascript-6">
+  import Listview from 'base/listview/listview'
   import { getSingerList } from 'api/singers'
   import { ERR_OK } from 'api/config'
   import Singer from 'common/js/singer'
@@ -25,6 +28,7 @@
           console.log(1)
           if (res.code === ERR_OK) {
             this.singers = this._normalize(res.data.list)
+            console.log(this.singers)
           }
         })
       },
@@ -62,7 +66,7 @@
           let value = map[k]
           if (value.title === HOT_NAME) {
             hot.push(value)
-          } else {
+          } else if (value.title.match(/[a-zA-Z]/)) {
             ret.push(value)
           }
         }
@@ -71,6 +75,9 @@
         })
         return hot.concat(ret)
       }
+    },
+    components: {
+      Listview
     }
   }
 </script>
