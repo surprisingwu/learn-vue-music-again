@@ -1,5 +1,11 @@
 <template>
-  <scroll class="listview" ref="listview">
+  <scroll
+    class="listview"
+    ref="listview"
+    :listenScroll="listenScroll"
+    :probeType="probeType"
+    @scroll="_onScroll"
+  >
     <ul>
       <li v-for="group in data" class="list-group" ref="listGroup">
         <h2 class="list-group-title">{{group.title}}</h2>
@@ -13,10 +19,20 @@
     </ul>
     <div class="list-shortcut" @touchstart="onShortcutTouchStart" @touchmove="onShortcutTouchMove">
       <ul>
-        <li v-for="(item,index) in shortcut" class="item" :data-index="index">
+        <li v-for="(item,index) in shortcut"
+            class="item"
+            :data-index="index"
+            :class="{'current': currentIndex === index}"
+        >
           {{item}}
         </li>
       </ul>
+    </div>
+    <div class="list-fixed" v-show="fixedTitle" ref="fixed">
+      <h2 class="fixed-title">{{fixedTitle}}</h2>
+    </div>
+    <div class="loading-container" v-show="!data.length">
+      <loading></loading>
     </div>
   </scroll>
 </template>
@@ -24,8 +40,10 @@
 <script type="text/ecmascript-6">
   import Scroll from 'base/scroll/scroll'
   import { getIndex } from 'common/js/dom'
+  import Loading from 'base/loading/loading'
 
   const SHORT_ITEM_HEIGHT = 18
+  const FIXED_TITLE = 30
   export default {
     props: {
       data: {
@@ -33,15 +51,31 @@
         default: []
       }
     },
+    data () {
+      return {
+        listHeight: [],
+        scrollY: -1,
+        currentIndex: 0,
+        diff: -1
+      }
+    },
     computed: {
       shortcut () {
         return this.data.map((item) => {
           return item.title.slice(0, 1)
         })
+      },
+      fixedTitle() {
+        if (this.scrollY >= 0) {
+          return ''
+        }
+        return this.data[this.currentIndex] ? this.data[this.currentIndex].title : ''
       }
     },
     created () {
       this.touch = {}
+      this.listenScroll = true
+      this.probeType = 3
     },
     methods: {
       onShortcutTouchStart ($event) {
@@ -56,15 +90,77 @@
         this.touch.endY = endTouch.pageY
         let delta = this.touch.endY - this.touch.startY
         let num = delta / SHORT_ITEM_HEIGHT | 0
-        let index = num + this.touch.beginIndex
+        let index = num + parseInt(this.touch.beginIndex)
         this._scrollTo(index)
       },
+      _calculateHeight () {
+        this.listHeight = []
+        const listEls = this.$refs.listGroup
+        let height = 0
+        this.listHeight.push(height)
+        for (let i = 0; i < listEls.length; i++) {
+          let item = listEls[i]
+          height += item.clientHeight
+          this.listHeight.push(height)
+        }
+      },
+      _onScroll (pos) {
+        this.scrollY = pos.y
+      },
       _scrollTo (index) {
+        // 点击其他地方时
+        if (!index && index !== 0) {
+          return
+        }
+        if (index < 0) {
+          index = 0
+        }
+        if (index > this.listHeight.length - 2) {
+          index = this.listHeight.length - 2
+        }
+        // 点击右侧的快速入口
+        this.scrollY = -this.listHeight[index]
         this.$refs.listview.scrollToElement(this.$refs.listGroup[index], 0)
       }
     },
+    watch: {
+      data (newData) {
+        setTimeout(() => {
+          this._calculateHeight()
+        }, 20)
+      },
+      scrollY (newY) {
+        // 计算newY的落点
+        let listHeight = this.listHeight
+        // 滚动到顶部,且newY >0
+        if (newY > 0) {
+          this.currentIndex = 0
+          return
+        }
+        // 在中间滚动
+        for (let i = 0; i < listHeight.length - 1; i++) {
+          let height1 = listHeight[i]
+          let height2 = listHeight[i + 1]
+          if (-newY >= height1 && -newY < height2) {
+            this.currentIndex = i
+            this.diff = height2 + newY
+            return
+          }
+        }
+        // 滚动到底部
+        this.currentIndex = listHeight.length - 2
+      },
+      diff(newVal) {
+        let offsetY = (newVal > 0 && newVal <= FIXED_TITLE) ? newVal - FIXED_TITLE : 0
+        if (this.offsetY === offsetY) {
+          return
+        }
+        this.offsetY = offsetY
+        this.$refs.fixed.style.transform = `translate3d(0,${this.offsetY}px,0)`
+      }
+    },
     components: {
-      Scroll
+      Scroll, Loading
     }
   }
 </script>

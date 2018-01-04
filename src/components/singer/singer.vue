@@ -25,10 +25,8 @@
     methods: {
       _getSingerList () {
         getSingerList().then((res) => {
-          console.log(1)
           if (res.code === ERR_OK) {
             this.singers = this._normalize(res.data.list)
-            console.log(this.singers)
           }
         })
       },
