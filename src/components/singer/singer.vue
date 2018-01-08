@@ -1,6 +1,6 @@
 <template>
   <div class="singers">
-    <listview :data="singers"></listview>
+    <listview :data="singers" @selectItem="selectSinger"></listview>
   </div>
 </template>
 
@@ -9,6 +9,7 @@
   import { getSingerList } from 'api/singers'
   import { ERR_OK } from 'api/config'
   import Singer from 'common/js/singer'
+  import {mapMutations} from 'vuex'
 
   const HOT_NAME = '热门'
   const HOT_SINGER_LEN = 10
@@ -23,6 +24,9 @@
       this._getSingerList()
     },
     methods: {
+      selectSinger(singer) {
+        this.setSinger(singer)
+      },
       _getSingerList () {
         getSingerList().then((res) => {
           if (res.code === ERR_OK) {
@@ -30,6 +34,9 @@
           }
         })
       },
+      ...mapMutations({
+        setSinger: 'SET_SINGER'
+      }),
       _normalize (list) {
         let map = {
           hot: {
